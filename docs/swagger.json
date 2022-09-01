@@ -1,0 +1,164 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "Swagger API.",
+        "title": "Gin Swagger Demo",
+        "contact": {},
+        "version": "1.0"
+    },
+    "host": "localhost:8088",
+    "paths": {
+        "/balance/": {
+            "get": {
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/demo/v1/hello": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Demo"
+                ],
+                "parameters": [
+                    {
+                        "description": "Add account",
+                        "name": "account",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controller.HelloRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/jwt_auth.AuthToken"
+                        }
+                    }
+                }
+            }
+        },
+        "/demo/v1/hi": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "tags": [
+                    "Demo"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/demo/v1/refresh": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Demo"
+                ],
+                "parameters": [
+                    {
+                        "description": "refresh token",
+                        "name": "refreshToken",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controller.RefershRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/jwt_auth.AuthToken"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "controller.HelloRequest": {
+            "type": "object",
+            "properties": {
+                "account": {
+                    "type": "string",
+                    "example": "Jack"
+                },
+                "password": {
+                    "type": "string",
+                    "example": "12345"
+                }
+            }
+        },
+        "controller.RefershRequest": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "type": "string",
+                    "example": "xxcjdjfcidasjcodioi"
+                }
+            }
+        },
+        "jwt_auth.AuthToken": {
+            "type": "object",
+            "properties": {
+                "accessExp": {
+                    "type": "integer",
+                    "example": 600
+                },
+                "accessToken": {
+                    "type": "string",
+                    "example": "dkdke3klwlwkkf..."
+                },
+                "refreshExp": {
+                    "type": "integer",
+                    "example": 86400
+                },
+                "refreshToken": {
+                    "type": "string",
+                    "example": "dkdke3klwlwkkf..."
+                },
+                "tokenType": {
+                    "type": "string",
+                    "example": "Bearer"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "ApiKeyAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    }
+}

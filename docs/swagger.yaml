@@ -1,0 +1,105 @@
+definitions:
+  controller.HelloRequest:
+    properties:
+      account:
+        example: Jack
+        type: string
+      password:
+        example: "12345"
+        type: string
+    type: object
+  controller.RefershRequest:
+    properties:
+      token:
+        example: xxcjdjfcidasjcodioi
+        type: string
+    type: object
+  jwt_auth.AuthToken:
+    properties:
+      accessExp:
+        example: 600
+        type: integer
+      accessToken:
+        example: dkdke3klwlwkkf...
+        type: string
+      refreshExp:
+        example: 86400
+        type: integer
+      refreshToken:
+        example: dkdke3klwlwkkf...
+        type: string
+      tokenType:
+        example: Bearer
+        type: string
+    type: object
+host: localhost:8088
+info:
+  contact: {}
+  description: Swagger API.
+  title: Gin Swagger Demo
+  version: "1.0"
+paths:
+  /balance/:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+  /demo/v1/hello:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Add account
+        in: body
+        name: account
+        required: true
+        schema:
+          $ref: '#/definitions/controller.HelloRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/jwt_auth.AuthToken'
+      tags:
+      - Demo
+  /demo/v1/hi:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      security:
+      - ApiKeyAuth: []
+      tags:
+      - Demo
+  /demo/v1/refresh:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: refresh token
+        in: body
+        name: refreshToken
+        required: true
+        schema:
+          $ref: '#/definitions/controller.RefershRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/jwt_auth.AuthToken'
+      tags:
+      - Demo
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

@@ -1,0 +1,30 @@
+version: '3.7'
+
+services:
+
+  redis: #快取
+    image: redis:7.0.4
+    command: --port ${REDIS_PORT}
+    container_name: redis-connect
+    ports:
+      - "${REDIS_PORT}:${REDIS_PORT}"
+    networks:
+      - golang-redis
+    volumes:
+      - redis_data:/data
+
+  backend : #golang gin
+    image: gindemo_20220901
+    ports:
+      - "${PORT}:${PORT}"
+    expose:
+      - ${PORT}
+    networks:
+      - golang-redis
+networks:
+  golang-redis:
+    driver: bridge
+
+volumes:
+  redis_data:
+    driver: local
