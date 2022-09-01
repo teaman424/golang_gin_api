@@ -52,7 +52,8 @@ func init() {
 
 func NewClient(ctx context.Context) *redis.Client { // 實體化redis.Client 並返回實體的位址
 	rdb := redis.NewClient(&redis.Options{
-		Addr: "redis-connect:" + os.Getenv("REDIS_PORT"),
+		//Addr: "redis-connect:" + os.Getenv("REDIS_PORT"),
+		Addr: "127.0.0.1:" + os.Getenv("REDIS_PORT"),
 		//Password: "", // no password set
 		//DB:       0,  // use default DB
 	})

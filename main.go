@@ -33,17 +33,18 @@ import (
 
 func main() {
 	router := gin.Default()
-	router.GET("/balance/", controller.GetBalance)
 
-	demoV1 := router.Group("/demo/v1")
+	apiV1 := router.Group("/api/v1")
 
-	demoV1.POST("/hello", controller.Hello)
+	apiV1.GET("/demo/balance/", controller.GetBalance)
 
-	demoV1.POST("/refresh", controller.Refresh)
+	apiV1.POST("/users/login", controller.Login)
+
+	apiV1.POST("/toekn/refresh", controller.Refresh)
 
 	//demoV1.GET("/revoke", controller.Revoke)
 
-	demoV1.Use(jwt_auth.AuthRequired).GET("/hi", controller.Hi)
+	apiV1.Use(jwt_auth.AuthRequired).GET("/demo/name", controller.GetName)
 
 	url := ginSwagger.URL("http://localhost:8088/swagger/doc.json") // The url pointing to API definition
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, url))
