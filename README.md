@@ -10,3 +10,9 @@
     * gorm.io/driver/mysql
 	* gorm.io/gorm
 * 建立MVC模式
+
+### 環境參數
+```
+cp .env.example .env
+vi .env //修改對應的參數
+```
