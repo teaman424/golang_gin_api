@@ -19,8 +19,9 @@ import (
 
 // custom claims
 type Claims struct {
-	Account string `json:"account"`
-	Uuid    string
+	Account   string `json:"account"`
+	Uuid      string
+	TokenUuid string
 	jwt.StandardClaims
 }
 
@@ -36,7 +37,7 @@ var rdb *redis.Client
 var jwtAccessSecret []byte
 var jwtRefreshSecret []byte
 
-func init() {
+func Init() {
 	//fmt.Println("jwt_auth init!!!!!!")
 	ctx := context.Background()
 	err := godotenv.Load()
@@ -52,8 +53,8 @@ func init() {
 
 func NewClient(ctx context.Context) *redis.Client { // 實體化redis.Client 並返回實體的位址
 	rdb := redis.NewClient(&redis.Options{
-		//Addr: "redis-connect:" + os.Getenv("REDIS_PORT"),
-		Addr: "127.0.0.1:" + os.Getenv("REDIS_PORT"),
+		Addr: os.Getenv("REDIS_HOST") + ":" + os.Getenv("REDIS_PORT"),
+		//Addr: "127.0.0.1:" + os.Getenv("REDIS_PORT"),
 		//Password: "", // no password set
 		//DB:       0,  // use default DB
 	})
@@ -111,8 +112,7 @@ func AuthRequired(c *gin.Context) {
 		return
 	}
 	if claims, ok := tokenClaims.Claims.(*Claims); ok && tokenClaims.Valid {
-		fmt.Println("account:", claims.Account)
-		userid, err := rdb.Get(c, claims.Uuid).Result()
+		userid, err := rdb.Get(c, claims.TokenUuid+"-accuess").Result()
 		if err != nil {
 			fmt.Println("rdb not find  key!")
 			c.JSON(http.StatusUnauthorized, gin.H{
@@ -121,9 +121,15 @@ func AuthRequired(c *gin.Context) {
 			c.Abort()
 			return
 		}
-
-		fmt.Println("account:", userid)
+		if userid != claims.Uuid {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "access token error!",
+			})
+			c.Abort()
+			return
+		}
 		c.Set("account", claims.Account)
+		c.Set("uuid", claims.Uuid)
 		c.Next()
 	} else {
 		c.Abort()
@@ -132,17 +138,18 @@ func AuthRequired(c *gin.Context) {
 }
 
 //create token
-func CreateToken(c *gin.Context, account string) (*AuthToken, error) {
+func CreateToken(c *gin.Context, id, account string) (*AuthToken, error) {
 
 	now := time.Now()
 	jwtId := account + strconv.FormatInt(now.Unix(), 10)
 	authToken := AuthToken{}
 
-	accessUuid := uuid.New().String()
+	tokenUuid := uuid.New().String()
 	// set claims and sign
 	claims := Claims{
-		Account: account,
-		Uuid:    accessUuid,
+		Account:   account,
+		Uuid:      id,
+		TokenUuid: tokenUuid,
 		StandardClaims: jwt.StandardClaims{
 			Audience:  account,
 			ExpiresAt: now.Add(600 * time.Second).Unix(),
@@ -164,16 +171,15 @@ func CreateToken(c *gin.Context, account string) (*AuthToken, error) {
 		return &authToken, err
 	}
 
-	errAccess := rdb.Set(c, accessUuid, "value", 3*time.Minute).Err() // => SET key value 0 數字代表過期秒數，在這裡0為永不過期
+	errAccess := rdb.Set(c, tokenUuid+"-accuess", id, 3*time.Minute).Err() // => SET key value 0 數字代表過期秒數，在這裡0為永不過期
 	if errAccess != nil {
 		panic(errAccess)
 	}
-
-	rfUuid := uuid.New().String()
 	//create refresh token
 	rfClaims := Claims{
-		Account: account,
-		Uuid:    rfUuid,
+		Account:   account,
+		Uuid:      id,
+		TokenUuid: tokenUuid,
 		StandardClaims: jwt.StandardClaims{
 			Audience:  account,
 			ExpiresAt: now.Add(time.Hour * 24).Unix(),
@@ -191,7 +197,7 @@ func CreateToken(c *gin.Context, account string) (*AuthToken, error) {
 		return &authToken, err
 	}
 
-	errRefresh := rdb.Set(c, rfUuid, "value", 10*time.Minute).Err() // => SET key value 0 數字代表過期秒數，在這裡0為永不過期
+	errRefresh := rdb.Set(c, tokenUuid+"-refresh", id, 10*time.Minute).Err() // => SET key value 0 數字代表過期秒數，在這裡0為永不過期
 	if errRefresh != nil {
 		panic(errRefresh)
 	}
@@ -201,6 +207,8 @@ func CreateToken(c *gin.Context, account string) (*AuthToken, error) {
 	authToken.AccessExp = 600
 	authToken.RefreshExp = 86400
 	authToken.TokenType = "Bearer"
+
+	fmt.Println("tokenUUid : " + tokenUuid)
 	// c.JSON(http.StatusOK, gin.H{
 	// 	"token": token,
 	// })
@@ -239,17 +247,95 @@ func Refresh(c *gin.Context, refreshToken string) (*AuthToken, error) {
 	//is token valid?
 	if claims, ok := tokenClaims.Claims.(*Claims); ok && tokenClaims.Valid {
 		fmt.Println("account:", claims.Account)
+		authToken := AuthToken{}
 		//create new accuss token
-		ts, createErr := CreateToken(c, claims.Account)
-		if createErr != nil {
-			c.JSON(http.StatusForbidden, createErr.Error())
-			return nil, err
+		now := time.Now()
+		// set claims and sign
+		claims := Claims{
+			Account:   claims.Account,
+			TokenUuid: claims.TokenUuid,
+			Uuid:      claims.Uuid,
+			StandardClaims: jwt.StandardClaims{
+				Audience:  claims.Account,
+				ExpiresAt: now.Add(600 * time.Second).Unix(),
+				Id:        claims.Id,
+				IssuedAt:  now.Unix(),
+				Issuer:    "ginJWT",
+				NotBefore: now.Add(1 * time.Second).Unix(),
+				Subject:   claims.Account,
+			},
+		}
+		tokenClaims := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+		token, err := tokenClaims.SignedString(jwtAccessSecret)
+		if err != nil {
+
+			fmt.Println("here")
+			// c.JSON(http.StatusInternalServerError, gin.H{
+			// 	"error": err.Error(),
+			// })
+			return &authToken, err
 		}
 
-		return ts, nil
+		errAccess := rdb.Set(c, claims.TokenUuid+"-accuess", claims.Uuid, 3*time.Minute).Err() // => SET key value 0 數字代表過期秒數，在這裡0為永不過期
+		if errAccess != nil {
+			fmt.Println(errAccess)
+		}
+
+		authToken.AccessToken = token
+		authToken.RefreshToken = refreshToken
+		authToken.AccessExp = 600
+		authToken.RefreshExp = 86400
+		authToken.TokenType = "Bearer"
+		return &authToken, nil
+
 	} else {
 		fmt.Println("error here")
 		return nil, tokenClaims.Claims.Valid()
 	}
 
+}
+
+func Revoke(c *gin.Context, accessToken string) bool {
+	//verify the token
+	tokenClaims, err := jwt.ParseWithClaims(accessToken, &Claims{}, func(token *jwt.Token) (i interface{}, err error) {
+		return jwtRefreshSecret, nil
+	})
+	//if there is an error, the token must have expired
+	if err != nil {
+		var message string
+		if ve, ok := err.(*jwt.ValidationError); ok {
+			if ve.Errors&jwt.ValidationErrorMalformed != 0 {
+				message = "Refresh token is malformed"
+			} else if ve.Errors&jwt.ValidationErrorUnverifiable != 0 {
+				message = "Refresh token could not be verified because of signing problems"
+			} else if ve.Errors&jwt.ValidationErrorSignatureInvalid != 0 {
+				message = "Refresh signature validation failed"
+			} else if ve.Errors&jwt.ValidationErrorExpired != 0 {
+				message = "Refresh token is expired"
+			} else if ve.Errors&jwt.ValidationErrorNotValidYet != 0 {
+				message = "Refresh token is not yet valid before sometime"
+			} else {
+				message = "can not handle this refresh token"
+			}
+		}
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": message,
+		})
+		c.Abort()
+		return false
+	}
+	//is token valid?
+	if claims, ok := tokenClaims.Claims.(*Claims); ok && tokenClaims.Valid {
+		fmt.Println("account:", claims.Account)
+
+		errDelToken := rdb.Del(c, claims.TokenUuid+"-accuess", claims.TokenUuid+"-refresh").Err() // del access token and refresh token
+		if errDelToken != nil {
+			fmt.Println(errDelToken)
+		}
+		return true
+
+	} else {
+		fmt.Println("error here")
+		return false
+	}
 }

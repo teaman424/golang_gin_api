@@ -16,8 +16,11 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/balance/": {
+        "/api/v1/demo/balance": {
             "get": {
+                "tags": [
+                    "Demo"
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -28,39 +31,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/demo/v1/hello": {
-            "post": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Demo"
-                ],
-                "parameters": [
-                    {
-                        "description": "Add account",
-                        "name": "account",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/controller.HelloRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/jwt_auth.AuthToken"
-                        }
-                    }
-                }
-            }
-        },
-        "/demo/v1/hi": {
+        "/api/v1/demo/name": {
             "get": {
                 "security": [
                     {
@@ -80,7 +51,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/demo/v1/refresh": {
+        "/api/v1/toekn/refresh": {
             "post": {
                 "consumes": [
                     "application/json"
@@ -89,7 +60,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Demo"
+                    "Auth"
                 ],
                 "parameters": [
                     {
@@ -111,10 +82,153 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/api/v1/toekn/revoke": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/jwt_auth.AuthToken"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/users/create": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "parameters": [
+                    {
+                        "description": "Add account",
+                        "name": "account",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controller.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/jwt_auth.AuthToken"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/users/info": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Member"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "parameters": [
+                    {
+                        "description": "update user info",
+                        "name": "userInfo",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.UpdateUser"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/api/v1/users/login": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "parameters": [
+                    {
+                        "description": "Add account",
+                        "name": "userInfo",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controller.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/jwt_auth.AuthToken"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
-        "controller.HelloRequest": {
+        "controller.LoginRequest": {
             "type": "object",
             "properties": {
                 "account": {
@@ -158,6 +272,53 @@ const docTemplate = `{
                 "tokenType": {
                     "type": "string",
                     "example": "Bearer"
+                }
+            }
+        },
+        "model.Member": {
+            "type": "object",
+            "properties": {
+                "account": {
+                    "type": "string"
+                },
+                "address": {
+                    "type": "string"
+                },
+                "gender": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isVerify": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.UpdateUser": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string",
+                    "example": "地球"
+                },
+                "gender": {
+                    "type": "string",
+                    "example": "m"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Jack"
+                },
+                "phone": {
+                    "type": "string",
+                    "example": "0987654321"
                 }
             }
         }

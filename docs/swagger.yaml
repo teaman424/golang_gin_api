@@ -1,5 +1,5 @@
 definitions:
-  controller.HelloRequest:
+  controller.LoginRequest:
     properties:
       account:
         example: Jack
@@ -32,6 +32,38 @@ definitions:
         example: Bearer
         type: string
     type: object
+  model.Member:
+    properties:
+      account:
+        type: string
+      address:
+        type: string
+      gender:
+        type: string
+      id:
+        type: string
+      isVerify:
+        type: boolean
+      name:
+        type: string
+      phone:
+        type: string
+    type: object
+  model.UpdateUser:
+    properties:
+      address:
+        example: 地球
+        type: string
+      gender:
+        example: m
+        type: string
+      name:
+        example: Jack
+        type: string
+      phone:
+        example: "0987654321"
+        type: string
+    type: object
 host: localhost:8088
 info:
   contact: {}
@@ -39,34 +71,16 @@ info:
   title: Gin Swagger Demo
   version: "1.0"
 paths:
-  /balance/:
+  /api/v1/demo/balance:
     get:
       responses:
         "200":
           description: OK
           schema:
             type: string
-  /demo/v1/hello:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Add account
-        in: body
-        name: account
-        required: true
-        schema:
-          $ref: '#/definitions/controller.HelloRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/jwt_auth.AuthToken'
       tags:
       - Demo
-  /demo/v1/hi:
+  /api/v1/demo/name:
     get:
       responses:
         "200":
@@ -77,7 +91,7 @@ paths:
       - ApiKeyAuth: []
       tags:
       - Demo
-  /demo/v1/refresh:
+  /api/v1/toekn/refresh:
     post:
       consumes:
       - application/json
@@ -96,7 +110,94 @@ paths:
           schema:
             $ref: '#/definitions/jwt_auth.AuthToken'
       tags:
-      - Demo
+      - Auth
+  /api/v1/toekn/revoke:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/jwt_auth.AuthToken'
+      tags:
+      - Auth
+  /api/v1/users/create:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Add account
+        in: body
+        name: account
+        required: true
+        schema:
+          $ref: '#/definitions/controller.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/jwt_auth.AuthToken'
+      tags:
+      - Users
+  /api/v1/users/info:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Member'
+      security:
+      - ApiKeyAuth: []
+      tags:
+      - Users
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: update user info
+        in: body
+        name: userInfo
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateUser'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+      security:
+      - ApiKeyAuth: []
+      tags:
+      - Users
+  /api/v1/users/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Add account
+        in: body
+        name: userInfo
+        required: true
+        schema:
+          $ref: '#/definitions/controller.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/jwt_auth.AuthToken'
+      tags:
+      - Users
 securityDefinitions:
   ApiKeyAuth:
     in: header
