@@ -1,4 +1,4 @@
-package jwt_auth
+package middleware
 
 import (
 	"context"
@@ -27,9 +27,9 @@ type Claims struct {
 
 type AuthToken struct {
 	AccessToken  string `json:"accessToken"  example:"dkdke3klwlwkkf..."`
-	AccessExp    int    `json:"accessExp" example:"600"`
+	AccessExpAt  int64  `json:"accessExp" example:"1623839849"`
 	RefreshToken string `json:"refreshToken" example:"dkdke3klwlwkkf..."`
-	RefreshExp   int    `json:"refreshExp" example:"86400"`
+	RefreshExpAt int64  `json:"refreshExp" example:"1623839849"`
 	TokenType    string `json:"tokenType" example:"Bearer"`
 }
 
@@ -38,7 +38,7 @@ var jwtAccessSecret []byte
 var jwtRefreshSecret []byte
 
 func Init() {
-	//fmt.Println("jwt_auth init!!!!!!")
+	//fmt.Println("md jwt auth init!!!!!!")
 	ctx := context.Background()
 	err := godotenv.Load()
 	if err != nil {
@@ -130,6 +130,7 @@ func AuthRequired(c *gin.Context) {
 		}
 		c.Set("account", claims.Account)
 		c.Set("uuid", claims.Uuid)
+		c.Set("tokenUuid", claims.TokenUuid)
 		c.Next()
 	} else {
 		c.Abort()
@@ -137,13 +138,13 @@ func AuthRequired(c *gin.Context) {
 	}
 }
 
-//create token
+// create token
 func CreateToken(c *gin.Context, id, account string) (*AuthToken, error) {
 
 	now := time.Now()
 	jwtId := account + strconv.FormatInt(now.Unix(), 10)
 	authToken := AuthToken{}
-
+	accessExpiresAt := now.Add(24 * time.Hour).Unix()
 	tokenUuid := uuid.New().String()
 	// set claims and sign
 	claims := Claims{
@@ -152,12 +153,12 @@ func CreateToken(c *gin.Context, id, account string) (*AuthToken, error) {
 		TokenUuid: tokenUuid,
 		StandardClaims: jwt.StandardClaims{
 			Audience:  account,
-			ExpiresAt: now.Add(600 * time.Second).Unix(),
+			ExpiresAt: accessExpiresAt,
 			Id:        jwtId,
 			IssuedAt:  now.Unix(),
 			Issuer:    "ginJWT",
-			NotBefore: now.Add(1 * time.Second).Unix(),
-			Subject:   account,
+			//NotBefore: now.Add(1 * time.Second).Unix(),
+			Subject: account,
 		},
 	}
 	tokenClaims := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -171,22 +172,23 @@ func CreateToken(c *gin.Context, id, account string) (*AuthToken, error) {
 		return &authToken, err
 	}
 
-	errAccess := rdb.Set(c, tokenUuid+"-accuess", id, 3*time.Minute).Err() // => SET key value 0 數字代表過期秒數，在這裡0為永不過期
+	errAccess := rdb.Set(c, tokenUuid+"-accuess", id, 24*time.Hour).Err() // => SET key value 0 數字代表過期秒數，在這裡0為永不過期
 	if errAccess != nil {
 		panic(errAccess)
 	}
 	//create refresh token
+	refreshExpiresAt := now.Add(time.Hour * 24 * 30).Unix()
 	rfClaims := Claims{
 		Account:   account,
 		Uuid:      id,
 		TokenUuid: tokenUuid,
 		StandardClaims: jwt.StandardClaims{
 			Audience:  account,
-			ExpiresAt: now.Add(time.Hour * 24).Unix(),
+			ExpiresAt: refreshExpiresAt,
 			Id:        jwtId,
 			IssuedAt:  now.Unix(),
 			Issuer:    "ginJWT",
-			NotBefore: now.Add(1 * time.Second).Unix(),
+			NotBefore: now.Add(60 * time.Second).Unix(),
 			Subject:   account,
 		},
 	}
@@ -197,15 +199,15 @@ func CreateToken(c *gin.Context, id, account string) (*AuthToken, error) {
 		return &authToken, err
 	}
 
-	errRefresh := rdb.Set(c, tokenUuid+"-refresh", id, 10*time.Minute).Err() // => SET key value 0 數字代表過期秒數，在這裡0為永不過期
+	errRefresh := rdb.Set(c, tokenUuid+"-refresh", id, time.Hour*24*30).Err() // => SET key value 0 數字代表過期秒數，在這裡0為永不過期
 	if errRefresh != nil {
 		panic(errRefresh)
 	}
 
 	authToken.AccessToken = token
 	authToken.RefreshToken = refreshToken
-	authToken.AccessExp = 600
-	authToken.RefreshExp = 86400
+	authToken.AccessExpAt = accessExpiresAt
+	authToken.RefreshExpAt = refreshExpiresAt
 	authToken.TokenType = "Bearer"
 
 	fmt.Println("tokenUUid : " + tokenUuid)
@@ -239,7 +241,7 @@ func Refresh(c *gin.Context, refreshToken string) (*AuthToken, error) {
 			}
 		}
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": message,
+			"errMsg": message,
 		})
 		c.Abort()
 		return nil, err
@@ -248,16 +250,17 @@ func Refresh(c *gin.Context, refreshToken string) (*AuthToken, error) {
 	if claims, ok := tokenClaims.Claims.(*Claims); ok && tokenClaims.Valid {
 		fmt.Println("account:", claims.Account)
 		authToken := AuthToken{}
+		accessExpiresAt := time.Now().Add(24 * time.Hour).Unix()
 		//create new accuss token
 		now := time.Now()
-		// set claims and sign
-		claims := Claims{
+		// set new access claims and sign
+		accessClaims := Claims{
 			Account:   claims.Account,
 			TokenUuid: claims.TokenUuid,
 			Uuid:      claims.Uuid,
 			StandardClaims: jwt.StandardClaims{
 				Audience:  claims.Account,
-				ExpiresAt: now.Add(600 * time.Second).Unix(),
+				ExpiresAt: accessExpiresAt,
 				Id:        claims.Id,
 				IssuedAt:  now.Unix(),
 				Issuer:    "ginJWT",
@@ -265,7 +268,7 @@ func Refresh(c *gin.Context, refreshToken string) (*AuthToken, error) {
 				Subject:   claims.Account,
 			},
 		}
-		tokenClaims := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+		tokenClaims := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
 		token, err := tokenClaims.SignedString(jwtAccessSecret)
 		if err != nil {
 
@@ -276,15 +279,15 @@ func Refresh(c *gin.Context, refreshToken string) (*AuthToken, error) {
 			return &authToken, err
 		}
 
-		errAccess := rdb.Set(c, claims.TokenUuid+"-accuess", claims.Uuid, 3*time.Minute).Err() // => SET key value 0 數字代表過期秒數，在這裡0為永不過期
+		errAccess := rdb.Set(c, claims.TokenUuid+"-accuess", claims.Uuid, 24*time.Hour).Err() // => SET key value 0 數字代表過期秒數，在這裡0為永不過期
 		if errAccess != nil {
 			fmt.Println(errAccess)
 		}
 
 		authToken.AccessToken = token
 		authToken.RefreshToken = refreshToken
-		authToken.AccessExp = 600
-		authToken.RefreshExp = 86400
+		authToken.AccessExpAt = accessExpiresAt
+		authToken.RefreshExpAt = claims.ExpiresAt
 		authToken.TokenType = "Bearer"
 		return &authToken, nil
 
@@ -338,4 +341,13 @@ func Revoke(c *gin.Context, accessToken string) bool {
 		fmt.Println("error here")
 		return false
 	}
+}
+
+func Logout(c *gin.Context, tokenUuid string) bool {
+	//verify the token
+	errDelToken := rdb.Del(c, tokenUuid+"-accuess", tokenUuid+"-refresh").Err() // del access token and refresh token
+	if errDelToken != nil {
+		fmt.Println(errDelToken)
+	}
+	return true
 }

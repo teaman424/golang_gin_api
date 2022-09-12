@@ -3,8 +3,8 @@ package main
 import (
 	"gindemo/db"
 	_ "gindemo/docs"
+	md "gindemo/middleware"
 	"gindemo/routes"
-	"gindemo/vender/jwt_auth"
 	"os"
 )
 
@@ -28,7 +28,7 @@ import (
 // @name Authorization
 func main() {
 	//db init
-	jwt_auth.Init()
+	md.Init()
 	db.Init()
 	router := routes.SetRouter()
 	router.Run(":" + os.Getenv("PORT"))

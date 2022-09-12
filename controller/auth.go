@@ -1,41 +1,21 @@
 package controller
 
 import (
-	"gindemo/vender/jwt_auth"
+	md "gindemo/middleware"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 )
 
-// @Success 200 {object} jwt_auth.AuthToken
+// @Summary Using Refreah Token Update Access Token
+// @Success 200 {object} md.AuthToken
 // @Tags Auth
-// @Router /api/v1/toekn/refresh [post]
+// @Router /api/v1/auth/refresh [post]
 // @Accept json
 // @Produce json
 // @param refreshToken body RefershRequest true "refresh token"
 func Refresh(c *gin.Context) {
-	auth := c.GetHeader("Authorization")
-	if auth == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Not access token",
-		})
-		c.Abort()
-		return
-	}
-
-	token := strings.Split(auth, "Bearer ")[1]
-	result := jwt_auth.Revoke(c, token)
-	c.JSON(http.StatusOK, result)
-	return
-}
-
-// @Success 200 {object} jwt_auth.AuthToken
-// @Tags Auth
-// @Router /api/v1/toekn/revoke [get]
-// @Accept json
-// @Produce json
-func Revoke(c *gin.Context) {
 	// validate request body
 	var body struct {
 		Token string
@@ -43,18 +23,38 @@ func Revoke(c *gin.Context) {
 	err := c.ShouldBindJSON(&body)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
+			"errMsg": err.Error(),
 		})
 		return
 	}
 
-	newToken, err := jwt_auth.Refresh(c, body.Token)
+	newToken, err := md.Refresh(c, body.Token)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
+		//reply by md.Refresh
 		return
 	}
 	c.JSON(http.StatusOK, newToken)
+	return
+}
+
+// @Summary Revoke Access Token and Refresh Token
+// @Success 200 {object} md.AuthToken
+// @Tags Auth
+// @Router /api/v1/auth/revoke [get]
+// @Accept json
+// @Produce json
+func Revoke(c *gin.Context) {
+	auth := c.GetHeader("Authorization")
+	if auth == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"errMsg": "Not access token",
+		})
+		c.Abort()
+		return
+	}
+
+	token := strings.Split(auth, "Bearer ")[1]
+	result := md.Revoke(c, token)
+	c.JSON(http.StatusOK, result)
 	return
 }

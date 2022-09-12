@@ -14,16 +14,16 @@ definitions:
         example: xxcjdjfcidasjcodioi
         type: string
     type: object
-  jwt_auth.AuthToken:
+  middleware.AuthToken:
     properties:
       accessExp:
-        example: 600
+        example: 1623839849
         type: integer
       accessToken:
         example: dkdke3klwlwkkf...
         type: string
       refreshExp:
-        example: 86400
+        example: 1623839849
         type: integer
       refreshToken:
         example: dkdke3klwlwkkf...
@@ -31,6 +31,40 @@ definitions:
       tokenType:
         example: Bearer
         type: string
+    type: object
+  model.Fruit:
+    properties:
+      calories:
+        example: 20
+        type: number
+      id:
+        example: 1
+        type: integer
+      name:
+        example: 蘋果
+        type: string
+      original_name:
+        example: 蘋果
+        type: string
+    type: object
+  model.Habit:
+    properties:
+      favorite_list:
+        example:
+        - 櫻桃
+        - 釋迦
+        items:
+          type: string
+        type: array
+      member_id:
+        type: string
+      nasty_list:
+        example:
+        - 櫻桃
+        - 釋迦
+        items:
+          type: string
+        type: array
     type: object
   model.Member:
     properties:
@@ -64,6 +98,23 @@ definitions:
         example: "0987654321"
         type: string
     type: object
+  model.UpdateUserHabit:
+    properties:
+      favorite_list:
+        example:
+        - 櫻桃
+        - 釋迦
+        items:
+          type: string
+        type: array
+      nasty_list:
+        example:
+        - 櫻桃
+        - 釋迦
+        items:
+          type: string
+        type: array
+    type: object
 host: localhost:8088
 info:
   contact: {}
@@ -71,27 +122,7 @@ info:
   title: Gin Swagger Demo
   version: "1.0"
 paths:
-  /api/v1/demo/balance:
-    get:
-      responses:
-        "200":
-          description: OK
-          schema:
-            type: string
-      tags:
-      - Demo
-  /api/v1/demo/name:
-    get:
-      responses:
-        "200":
-          description: OK
-          schema:
-            type: string
-      security:
-      - ApiKeyAuth: []
-      tags:
-      - Demo
-  /api/v1/toekn/refresh:
+  /api/v1/auth/refresh:
     post:
       consumes:
       - application/json
@@ -108,10 +139,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/jwt_auth.AuthToken'
+            $ref: '#/definitions/middleware.AuthToken'
+      summary: Using Refreah Token Update Access Token
       tags:
       - Auth
-  /api/v1/toekn/revoke:
+  /api/v1/auth/revoke:
     get:
       consumes:
       - application/json
@@ -121,9 +153,28 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/jwt_auth.AuthToken'
+            $ref: '#/definitions/middleware.AuthToken'
+      summary: Revoke Access Token and Refresh Token
       tags:
       - Auth
+  /api/v1/food/fruit:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Fruit'
+            type: array
+      security:
+      - ApiKeyAuth: []
+      summary: Get all friut's information list
+      tags:
+      - Food
   /api/v1/users/create:
     post:
       consumes:
@@ -141,7 +192,44 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/jwt_auth.AuthToken'
+            $ref: '#/definitions/middleware.AuthToken'
+      summary: Create New User
+      tags:
+      - Users
+  /api/v1/users/habit:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Habit'
+      security:
+      - ApiKeyAuth: []
+      summary: Get user food habit information
+      tags:
+      - Users
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: update user habit info
+        in: body
+        name: userHabitInfo
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateUserHabit'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+      security:
+      - ApiKeyAuth: []
+      summary: Update user food habit information
       tags:
       - Users
   /api/v1/users/info:
@@ -157,6 +245,7 @@ paths:
             $ref: '#/definitions/model.Member'
       security:
       - ApiKeyAuth: []
+      summary: Get user account information
       tags:
       - Users
     patch:
@@ -176,6 +265,7 @@ paths:
           description: No Content
       security:
       - ApiKeyAuth: []
+      summary: Update user account information
       tags:
       - Users
   /api/v1/users/login:
@@ -195,7 +285,22 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/jwt_auth.AuthToken'
+            $ref: '#/definitions/middleware.AuthToken'
+      summary: Login User Account
+      tags:
+      - Users
+  /api/v1/users/logout:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+      security:
+      - ApiKeyAuth: []
+      summary: Logout user account
       tags:
       - Users
 securityDefinitions:

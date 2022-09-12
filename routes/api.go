@@ -2,7 +2,7 @@ package routes
 
 import (
 	"gindemo/controller"
-	"gindemo/vender/jwt_auth"
+	md "gindemo/middleware"
 
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -13,20 +13,27 @@ func SetRouter() *gin.Engine {
 
 	router := gin.Default()
 
+	//not need middleware api group
 	apiV1 := router.Group("/api/v1")
 
-	apiV1.GET("/demo/balance/", controller.GetBalance)
+	//need middleware api group
+	apiMdV1 := router.Group("/api/v1").Use(md.AuthRequired)
 
-	apiV1.POST("/users/login", controller.Login)
-	apiV1.POST("/users/create", controller.CreateUser)
-
+	//Token
 	apiV1.POST("/toekn/refresh", controller.Refresh)
-
 	apiV1.GET("/toekn/revoke", controller.Revoke)
 
-	apiV1.Use(jwt_auth.AuthRequired).GET("/demo/name", controller.GetName)
-	apiV1.Use(jwt_auth.AuthRequired).GET("/users/info", controller.GetUser)
-	apiV1.Use(jwt_auth.AuthRequired).PATCH("/users/info", controller.UpdateUserInfo)
+	//Users
+	apiV1.POST("/users/login", controller.Login)
+	apiV1.POST("/users/create", controller.CreateUser)
+	apiMdV1.GET("/users/info", controller.GetUser)
+	apiMdV1.PATCH("/users/info", controller.UpdateUserInfo)
+	apiMdV1.GET("/users/logout", controller.Logout)
+	apiMdV1.PATCH("/users/habit", controller.UpdateUserHabit)
+	apiMdV1.GET("/users/habit", controller.GetUserHabit)
+
+	//Food
+	apiMdV1.GET("/food/fruit", controller.GetFruitList)
 
 	//swagger doc
 	url := ginSwagger.URL("http://localhost:8088/swagger/doc.json") // The url pointing to API definition

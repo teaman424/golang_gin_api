@@ -4,9 +4,9 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	md "gindemo/middleware"
 	"gindemo/model"
 	"gindemo/service"
-	"gindemo/vender/jwt_auth"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -26,7 +26,8 @@ type UpdateUserRequest struct {
 	model.UpdateUser
 }
 
-// @Success 200 {object} jwt_auth.AuthToken
+// @Summary Login User Account
+// @Success 200 {object} md.AuthToken
 // @Tags Users
 // @Router /api/v1/users/login [post]
 // @Accept json
@@ -41,7 +42,7 @@ func Login(c *gin.Context) {
 	err := c.ShouldBindJSON(&body)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
+			"errMsg": err.Error(),
 		})
 		return
 	}
@@ -57,10 +58,10 @@ func Login(c *gin.Context) {
 	if result {
 		fmt.Println("member.Id : " + member.Id)
 		fmt.Println("member.Account : " + member.Account)
-		token, err := jwt_auth.CreateToken(c, member.Id, member.Account)
+		token, err := md.CreateToken(c, member.Id, member.Account)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err.Error(),
+				"errMsg": err.Error(),
 			})
 			return
 		}
@@ -76,7 +77,8 @@ func Login(c *gin.Context) {
 
 }
 
-// @Success 200 {object} jwt_auth.AuthToken
+// @Summary Create New User
+// @Success 200 {object} md.AuthToken
 // @Tags Users
 // @Router /api/v1/users/create [post]
 // @Accept json
@@ -133,10 +135,10 @@ func CreateUser(c *gin.Context) {
 		return
 	}
 
-	token, err := jwt_auth.CreateToken(c, nowMember.Id, nowMember.Account)
+	token, err := md.CreateToken(c, nowMember.Id, nowMember.Account)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
+			"errMsg": err.Error(),
 		})
 		return
 	}
@@ -145,6 +147,7 @@ func CreateUser(c *gin.Context) {
 	return
 }
 
+// @Summary Get user account information
 // @Success 200 {object} model.Member
 // @Tags Users
 // @Router /api/v1/users/info [get]
@@ -168,6 +171,7 @@ func GetUser(c *gin.Context) {
 	return
 }
 
+// @Summary Update user account information
 // @Success 204
 // @Tags Users
 // @Router /api/v1/users/info [patch]
@@ -179,12 +183,81 @@ func UpdateUserInfo(c *gin.Context) {
 	// Validate input
 	var input model.UpdateUser
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"errMsg": err.Error()})
 		return
 	}
 
 	userId := c.GetString("uuid")
 	errMsg := service.UpdateUserInfo(userId, &input)
+	if errMsg != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"errMsg": errMsg,
+		})
+		return
+	}
+
+	c.JSON(http.StatusNoContent, "true")
+	return
+}
+
+// @Summary Logout user account
+// @Success 204
+// @Tags Users
+// @Router /api/v1/users/logout [get]
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+func Logout(c *gin.Context) {
+	tokenUuid := c.GetString("tokenUuid")
+	result := md.Logout(c, tokenUuid)
+	c.JSON(http.StatusNoContent, result)
+	return
+}
+
+// @Summary Get user food habit information
+// @Success 200 {object} model.Habit
+// @Tags Users
+// @Router /api/v1/users/habit [get]
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+func GetUserHabit(c *gin.Context) {
+
+	memberHabitInfo := &model.Habit{}
+	userId := c.GetString("uuid")
+
+	errMsg := service.GetUserHabit(userId, memberHabitInfo)
+	if errMsg != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"errMsg": errMsg.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, memberHabitInfo)
+	return
+}
+
+// @Summary Update user food habit information
+// @Success 204
+// @Tags Users
+// @Router /api/v1/users/habit [patch]
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @param userHabitInfo body model.UpdateUserHabit true "update user habit info"
+func UpdateUserHabit(c *gin.Context) {
+	// Validate input
+	var input model.UpdateUserHabit
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"errMsg": err.Error()})
+		return
+	}
+
+	userId := c.GetString("uuid")
+	fmt.Println("start")
+	errMsg := service.UpdateUserHabit(userId, &input)
+	fmt.Println("end")
 	if errMsg != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"errMsg": errMsg,

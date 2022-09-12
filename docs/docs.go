@@ -16,42 +16,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/api/v1/demo/balance": {
-            "get": {
-                "tags": [
-                    "Demo"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/demo/name": {
-            "get": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "tags": [
-                    "Demo"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/toekn/refresh": {
+        "/api/v1/auth/refresh": {
             "post": {
                 "consumes": [
                     "application/json"
@@ -62,6 +27,7 @@ const docTemplate = `{
                 "tags": [
                     "Auth"
                 ],
+                "summary": "Using Refreah Token Update Access Token",
                 "parameters": [
                     {
                         "description": "refresh token",
@@ -77,13 +43,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/jwt_auth.AuthToken"
+                            "$ref": "#/definitions/middleware.AuthToken"
                         }
                     }
                 }
             }
         },
-        "/api/v1/toekn/revoke": {
+        "/api/v1/auth/revoke": {
             "get": {
                 "consumes": [
                     "application/json"
@@ -94,11 +60,42 @@ const docTemplate = `{
                 "tags": [
                     "Auth"
                 ],
+                "summary": "Revoke Access Token and Refresh Token",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/jwt_auth.AuthToken"
+                            "$ref": "#/definitions/middleware.AuthToken"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/food/fruit": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Food"
+                ],
+                "summary": "Get all friut's information list",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.Fruit"
+                            }
                         }
                     }
                 }
@@ -115,6 +112,7 @@ const docTemplate = `{
                 "tags": [
                     "Users"
                 ],
+                "summary": "Create New User",
                 "parameters": [
                     {
                         "description": "Add account",
@@ -130,8 +128,68 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/jwt_auth.AuthToken"
+                            "$ref": "#/definitions/middleware.AuthToken"
                         }
+                    }
+                }
+            }
+        },
+        "/api/v1/users/habit": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Get user food habit information",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Habit"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Update user food habit information",
+                "parameters": [
+                    {
+                        "description": "update user habit info",
+                        "name": "userHabitInfo",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.UpdateUserHabit"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
                     }
                 }
             }
@@ -152,6 +210,7 @@ const docTemplate = `{
                 "tags": [
                     "Users"
                 ],
+                "summary": "Get user account information",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -176,6 +235,7 @@ const docTemplate = `{
                 "tags": [
                     "Users"
                 ],
+                "summary": "Update user account information",
                 "parameters": [
                     {
                         "description": "update user info",
@@ -205,6 +265,7 @@ const docTemplate = `{
                 "tags": [
                     "Users"
                 ],
+                "summary": "Login User Account",
                 "parameters": [
                     {
                         "description": "Add account",
@@ -220,8 +281,32 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/jwt_auth.AuthToken"
+                            "$ref": "#/definitions/middleware.AuthToken"
                         }
+                    }
+                }
+            }
+        },
+        "/api/v1/users/logout": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Logout user account",
+                "responses": {
+                    "204": {
+                        "description": "No Content"
                     }
                 }
             }
@@ -250,12 +335,12 @@ const docTemplate = `{
                 }
             }
         },
-        "jwt_auth.AuthToken": {
+        "middleware.AuthToken": {
             "type": "object",
             "properties": {
                 "accessExp": {
                     "type": "integer",
-                    "example": 600
+                    "example": 1623839849
                 },
                 "accessToken": {
                     "type": "string",
@@ -263,7 +348,7 @@ const docTemplate = `{
                 },
                 "refreshExp": {
                     "type": "integer",
-                    "example": 86400
+                    "example": 1623839849
                 },
                 "refreshToken": {
                     "type": "string",
@@ -272,6 +357,55 @@ const docTemplate = `{
                 "tokenType": {
                     "type": "string",
                     "example": "Bearer"
+                }
+            }
+        },
+        "model.Fruit": {
+            "type": "object",
+            "properties": {
+                "calories": {
+                    "type": "number",
+                    "example": 20
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "name": {
+                    "type": "string",
+                    "example": "蘋果"
+                },
+                "original_name": {
+                    "type": "string",
+                    "example": "蘋果"
+                }
+            }
+        },
+        "model.Habit": {
+            "type": "object",
+            "properties": {
+                "favorite_list": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "櫻桃",
+                        "釋迦"
+                    ]
+                },
+                "member_id": {
+                    "type": "string"
+                },
+                "nasty_list": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "櫻桃",
+                        "釋迦"
+                    ]
                 }
             }
         },
@@ -319,6 +453,31 @@ const docTemplate = `{
                 "phone": {
                     "type": "string",
                     "example": "0987654321"
+                }
+            }
+        },
+        "model.UpdateUserHabit": {
+            "type": "object",
+            "properties": {
+                "favorite_list": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "櫻桃",
+                        "釋迦"
+                    ]
+                },
+                "nasty_list": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "櫻桃",
+                        "釋迦"
+                    ]
                 }
             }
         }
